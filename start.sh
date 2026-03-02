@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Resolve the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Default values (can be overridden by env vars)
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
@@ -15,7 +18,8 @@ echo "   Reload: ${RELOAD}"
 echo "   Graceful shutdown timeout: ${TIMEOUT_GRACEFUL_SHUTDOWN}s"
 echo "   Log config: ${LOG_CONFIG}"
 
-source .venv/bin/activate
+# Activate the virtual environment relative to the script
+source "${SCRIPT_DIR}/.venv/bin/activate"
 
 CMD=(
   uvicorn "${APP_MODULE}"
