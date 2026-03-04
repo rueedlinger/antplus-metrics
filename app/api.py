@@ -22,8 +22,12 @@ from app.model import (
 from app.workout import Timer
 
 
-setup_logging()
+METRICS_DELAY_SECONDS = 0.5
+DEVICES_DELAY_SECONDS = 1
+WORKOUT_DELAY_SECONDS = 0.1
 
+
+setup_logging()
 logger = logging.getLogger("app.api")
 
 shutdown_event = asyncio.Event()  # shared shutdown flag
@@ -91,7 +95,7 @@ def start_metrics():
             return {"message": "Metrics collection started"}
         except Exception as e:
             logging.warning(f"Failed to start metrics (attempt {attempt}): {str(e)}")
-            time.sleep(0.5)  # brief pause before retrying
+            time.sleep(1)  # brief pause before retrying
 
     # If all retries failed, raise HTTPException
     raise HTTPException(
@@ -158,7 +162,7 @@ async def metrics_event_generator():
             yield f"data: {data}\n\n"
 
             # Send updates every second (adjust as needed)
-            await asyncio.sleep(1)
+            await asyncio.sleep(METRICS_DELAY_SECONDS)
         except asyncio.CancelledError:
             # Client disconnected
             break
@@ -166,7 +170,7 @@ async def metrics_event_generator():
             logger.error("Error in metrics_event_generator", exc_info=True)
             # Send error to client
             yield f"data: {json.dumps({'error': str(error), 'type': type(error).__name__, 'cause': repr(error.__cause__)})}\n\n"
-            await asyncio.sleep(1)
+            await asyncio.sleep(METRICS_DELAY_SECONDS)
 
 
 @app.get("/metrics/stream")
@@ -181,13 +185,13 @@ async def device_event_generator():
             # devices = app.state.metrics.get_devices()  # returns list of dicts
             devices = await asyncio.to_thread(app.state.metrics.get_devices)
             yield f"data: {json.dumps(devices)}\n\n"
-            await asyncio.sleep(1)  # adjust frequency as needed
+            await asyncio.sleep(DEVICES_DELAY_SECONDS)  # adjust frequency as needed
         except asyncio.CancelledError:
             # client disconnected
             break
         except Exception as error:
             yield f"data: {json.dumps({'error': str(error), 'type': type(error).__name__, 'cause': repr(error.__cause__)})}\n\n"
-            await asyncio.sleep(1)
+            await asyncio.sleep(DEVICES_DELAY_SECONDS)
 
 
 @app.get("/metrics/devices/stream")
@@ -248,13 +252,13 @@ async def workout_event_generator():
             else:
                 yield f"data: {json.dumps({})}\n\n"
 
-            await asyncio.sleep(0.5)  # send updates twice per second
+            await asyncio.sleep(WORKOUT_DELAY_SECONDS)  # send updates twice per second
         except asyncio.CancelledError:
             break
         except Exception as error:
             logger.error("Error in workout_event_generator", exc_info=True)
             yield f"data: {json.dumps({'error': str(error), 'type': type(error).__name__, 'cause': repr(error.__cause__)})}\n\n"
-            await asyncio.sleep(1)
+            await asyncio.sleep(WORKOUT_DELAY_SECONDS)
 
 
 @app.get("/workout/stream")
