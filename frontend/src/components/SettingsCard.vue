@@ -26,7 +26,7 @@
               class="border rounded px-2 py-1 w-full bg-white/50"
               placeholder="0.000"
             />
-            <p class="text-xs text-gray-500 mt-1">Leave empty for null.</p>
+            <p class="text-xs text-gray-500 mt-1">Optional. Leave empty for null.</p>
           </td>
         </tr>
 
@@ -45,7 +45,7 @@
               class="border rounded px-2 py-1 w-full bg-white/50"
               placeholder="0.000"
             />
-            <p class="text-xs text-gray-500 mt-1">Leave empty for null.</p>
+            <p class="text-xs text-gray-500 mt-1">Optional. Leave empty for null.</p>
           </td>
         </tr>
 
@@ -61,7 +61,7 @@
               class="border rounded px-2 py-1 w-full bg-white/50"
               placeholder="18"
             />
-            <p class="text-xs text-gray-500 mt-1">Leave empty for null.</p>
+            <p class="text-xs text-gray-500 mt-1">Optional. Leave empty for null.</p>
           </td>
         </tr>
 
