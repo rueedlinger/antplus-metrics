@@ -108,7 +108,8 @@ def get_status():
 @app.post("/metrics/start")
 def start_metrics():
     try:
-        app.state.metrics.start()
+        metrics: Metrics = app.state.metrics
+        metrics.start()
         return {"message": "Metrics collection started"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed start metrcics: {str(e)}")
@@ -117,7 +118,8 @@ def start_metrics():
 @app.post("/metrics/stop")
 def stop_metrics():
     try:
-        app.state.metrics.stop()
+        metrics: Metrics = app.state.metrics
+        metrics.stop()
         return {"message": "Metrics collection stopped"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to stop metrics: {str(e)}")
@@ -153,7 +155,8 @@ def get_metrics_settings():
 @app.get("/metrics", response_model=MetricsModel)
 def get_metrics():
     try:
-        metrics = app.state.metrics.get_metrics()
+        metrics: Metrics = app.state.metrics
+        metrics = metrics.get_metrics()
         return metrics
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
@@ -162,7 +165,8 @@ def get_metrics():
 @app.get("/metrics/devices", response_model=list[DeviceModel])
 def get_metrics_devices():
     try:
-        devices = app.state.metrics.get_devices()
+        metrics: Metrics = app.state.metrics
+        devices = metrics.get_devices()
         return [DeviceModel(**d) for d in devices]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get devices: {str(e)}")
