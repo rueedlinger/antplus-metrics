@@ -23,7 +23,7 @@ from app.model import (
 from app.workout import Timer
 
 
-METRICS_DELAY_SECONDS = 1
+METRICS_DELAY_SECONDS = 0.5
 DEVICES_DELAY_SECONDS = 1
 WORKOUT_DELAY_SECONDS = 0.1
 
