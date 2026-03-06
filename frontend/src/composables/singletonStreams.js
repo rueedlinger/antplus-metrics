@@ -4,9 +4,41 @@ import { API } from '../config.js';
 
 const tabId = Math.random().toString(36).slice(2);
 
-/* ------------------------
-   Metrics Singleton
------------------------- */
+// Track last second we beeped
+let lastBeepSecond = null;
+
+// ------------------------
+// Audio setup
+// ------------------------
+let audioCtx = null;
+
+// Initialize AudioContext on first user gesture
+function initAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+// Automatically listen for first click/tap anywhere on the page
+document.addEventListener('click', initAudioContext, { once: true });
+
+// Play a short beep
+function playBeep(beepDuration = 0.2) {
+  if (!audioCtx) return; // ensure user has interacted
+  const oscillator = audioCtx.createOscillator();
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime);
+  oscillator.connect(audioCtx.destination);
+  oscillator.start();
+  oscillator.stop(audioCtx.currentTime + beepDuration);
+}
+
+// ------------------------
+// Metrics Singleton
+// ------------------------
 const metrics = reactive({
   power: null,
   ma_power: null,
@@ -34,7 +66,7 @@ let metricsSource = null;
 let metricsChannel = null;
 
 function initMetricsStream() {
-  if (metricsSource) return; // already initialized
+  if (metricsSource) return;
 
   metricsChannel = new BroadcastChannel('sse-metrics');
   metricsChannel.onmessage = (ev) => {
@@ -52,7 +84,6 @@ function initMetricsStream() {
       Object.assign(metrics, data);
       metricsLastUpdated.value = new Date();
       metricsConnected.value = true;
-
       metricsChannel.postMessage({ tabId, metrics: data });
     } catch (err) {
       console.warn('Metrics SSE parse error', err);
@@ -67,9 +98,9 @@ function initMetricsStream() {
   };
 }
 
-/* ------------------------
-   Devices Singleton
------------------------- */
+// ------------------------
+// Devices Singleton
+// ------------------------
 const devices = ref([]);
 const devicesConnected = ref(false);
 const devicesLastUpdated = ref(null);
@@ -118,9 +149,9 @@ function initDevicesStream() {
   };
 }
 
-/* ------------------------
-   Workout Singleton
------------------------- */
+// ------------------------
+// Workout Singleton
+// ------------------------
 const workout = reactive({
   interval: { seconds: null, name: null },
   time_spent: null,
@@ -149,40 +180,48 @@ function initWorkoutStream() {
   workoutSource = new EventSource(API.baseUrl + API.endpoints.workoutStream);
   workoutSource.onopen = () => (workoutConnected.value = true);
 
+  // SINGLE onmessage handler
   workoutSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
 
-      // Ensure interval object always exists
+      // Ensure interval object
       workout.interval = {
         seconds: data.interval?.seconds ?? null,
         name: data.interval?.name ?? null,
       };
 
-      // Merge the rest of the workout data
       Object.assign(workout, { ...data, interval: workout.interval });
-
       workoutLastUpdated.value = new Date();
       workoutConnected.value = true;
 
       // Broadcast to other tabs
       workoutChannel.postMessage({ tabId, workout: data });
+
+      // Countdown beep for last 3 seconds
+      const currentSecond = Math.round(workout.time_remaining);
+      if (currentSecond > 0 && currentSecond <= 3) {
+        if (currentSecond !== lastBeepSecond) {
+          lastBeepSecond = currentSecond;
+          if (currentSecond == 1) {
+            playBeep(1);
+          } else {
+            playBeep(0.1);
+          }
+
+        }
+      } else {
+        lastBeepSecond = null; // reset
+      }
     } catch (err) {
       console.warn('Workout SSE parse error', err);
     }
   };
-
-  workoutSource.onerror = () => {
-    workoutConnected.value = false;
-    workoutSource.close();
-    workoutSource = null;
-    setTimeout(initWorkoutStream, 2000);
-  };
 }
 
-/* ------------------------
-   Export composables
------------------------- */
+// ------------------------
+// Export composables
+// ------------------------
 export function useMetricsStream() {
   initMetricsStream();
   return { metrics, connected: metricsConnected, lastUpdated: metricsLastUpdated };
