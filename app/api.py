@@ -97,6 +97,11 @@ else:
     )
 
 
+@app.get("/status")
+def get_status():
+    return {"up": "true"}
+
+
 # -------------------------
 # Metrics endpoints
 # -------------------------

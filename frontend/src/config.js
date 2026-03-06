@@ -2,6 +2,7 @@ export const API = {
   baseUrl: import.meta.env.VITE_API_BASE_URL || '',
 
   endpoints: {
+    status: "/status",
     startMetrics: '/metrics/start',
     stopMetrics: '/metrics/stop',
     getSettings: '/metrics/settings',

@@ -14,16 +14,14 @@ const streams = {};
 function createSSEStreamSingleton(key, url, onData, options = {}) {
   const { heartbeatMs = 5000, reconnectDelay = 2000 } = options;
 
-  // If the stream already exists, reuse it
   if (streams[key]) {
     streams[key].subscribers++;
     return streams[key];
   }
 
-  // Reactive state for this stream
   const connected = ref(false);
   const lastUpdated = ref(null);
-  let subscribers = 1; // mutable counter for active components
+  let subscribers = 1;
 
   let source = null;
   let heartbeatTimeout = null;
@@ -81,9 +79,8 @@ function createSSEStreamSingleton(key, url, onData, options = {}) {
     };
   }
 
-  // Cleanup function when a component unmounts
   function cleanup() {
-    subscribers--;
+    subscribers = Math.max(0, subscribers - 1);
     if (subscribers <= 0) {
       clearTimers();
       source?.close();
@@ -91,28 +88,38 @@ function createSSEStreamSingleton(key, url, onData, options = {}) {
     }
   }
 
-  // Store the singleton
   streams[key] = { connected, lastUpdated, cleanup, subscribers };
 
-  // Start the stream immediately
   connect();
 
   return streams[key];
 }
 
 /* =========================================================
-   METRICS STREAM
+   GENERIC STREAM HOOK
 ========================================================= */
-export function useMetricsStream() {
-  const metrics = reactive({});
+function useStream(key, url, initialValue = {}, isArray = false) {
+  const state = isArray ? ref(initialValue) : reactive(initialValue);
+
   const { connected, lastUpdated, cleanup } = createSSEStreamSingleton(
-    'metrics',
-    API.baseUrl + API.endpoints.metricsStream,
-    (data) => Object.assign(metrics, data)
+    key,
+    url,
+    (data) => (isArray ? (state.value = data) : Object.assign(state, data))
   );
 
   onUnmounted(() => cleanup?.());
 
+  return { state, connected, lastUpdated };
+}
+
+/* =========================================================
+   METRICS STREAM
+========================================================= */
+export function useMetricsStream() {
+  const { state: metrics, connected, lastUpdated } = useStream(
+    'metrics',
+    API.baseUrl + API.endpoints.metricsStream
+  );
   return { metrics, connected, lastUpdated };
 }
 
@@ -120,15 +127,12 @@ export function useMetricsStream() {
    DEVICES STREAM
 ========================================================= */
 export function useDevicesStream() {
-  const devices = ref([]);
-  const { connected, lastUpdated, cleanup } = createSSEStreamSingleton(
+  const { state: devices, connected, lastUpdated } = useStream(
     'devices',
     API.baseUrl + API.endpoints.devicesStream,
-    (data) => (devices.value = data)
+    [],
+    true
   );
-
-  onUnmounted(() => cleanup?.());
-
   return { devices, connected, lastUpdated };
 }
 
@@ -136,14 +140,9 @@ export function useDevicesStream() {
    WORKOUT STREAM
 ========================================================= */
 export function useWorkoutStream() {
-  const workout = reactive({});
-  const { connected, lastUpdated, cleanup } = createSSEStreamSingleton(
+  const { state: workout, connected, lastUpdated } = useStream(
     'workout',
-    API.baseUrl + API.endpoints.workoutStream,
-    (data) => Object.assign(workout, data)
+    API.baseUrl + API.endpoints.workoutStream
   );
-
-  onUnmounted(() => cleanup?.());
-
   return { workout, connected, lastUpdated };
 }
