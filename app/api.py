@@ -1,7 +1,9 @@
 import asyncio
+import os
 import pathlib
 import json
 import logging
+import subprocess
 from typing import List
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
@@ -47,6 +49,13 @@ async def lifespan(app: FastAPI):
 
     app.state.workout = []
     app.state.timer = Timer(app.state.workout)
+
+    # beep for signal
+    try:
+        subprocess.run(["beep", "-f", "1000", "-l", "2000"])
+        # subprocess.run(["osascript", "-e", "beep 3"]) # mac os
+    except Exception as e:
+        logger.warning("could not play beep: %s", str(e))
 
     yield
 
