@@ -2,7 +2,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-LOG_FILE="${HOME}/amwa_install.log"
+LOG_FILE="$(eval echo "~$SUDO_USER")/amwa_install.log"
 
 # Truncate the log at the start of the script
 > "$LOG_FILE"
