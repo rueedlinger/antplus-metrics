@@ -209,3 +209,6 @@ __marimo__/
 .vscode/
 
 .DS_Store
+
+workout.json
+metrics.json

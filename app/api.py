@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from pathlib import Path
 import logging
 from typing import List
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -22,9 +23,10 @@ from app.core import setup_logging
 # --------------------
 # Constants
 # --------------------
-TMP_DIR = "/tmp"
-METRICS_FILE = os.path.join(TMP_DIR, "metrics.json")
-WORKOUT_FILE = os.path.join(TMP_DIR, "workout.json")
+current_file = Path(__file__).resolve()
+root_store = current_file.parent.parent
+METRICS_FILE = os.path.join(root_store, "metrics.json")
+WORKOUT_FILE = os.path.join(root_store, "workout.json")
 
 METRICS_DELAY_SECONDS = 0.5
 DEVICES_DELAY_SECONDS = 1
