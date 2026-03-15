@@ -11,6 +11,8 @@ log() {
     echo -e "$1" | tee -a "$LOG_FILE"
 }
 
+
+
 # -----------------------
 # DISCLAIMER
 # -----------------------
@@ -21,16 +23,10 @@ log ""
 log "DISCLAIMER:"
 log "This script will install and configure the AMWA service"
 log "on your system. It will modify systemd services and"
-log "write files to /etc/systemd/system."
+log "write system files."
 log ""
 log "NO WARRANTY is provided. Use at your own risk."
 log ""
-
-read -r -p "Type 'yes' to continue: " CONFIRM
-if [[ "$CONFIRM" != "yes" ]]; then
-    log "Aborted."
-    exit 1
-fi
 
 # -----------------------
 # CHECK SUDO
@@ -40,6 +36,13 @@ if [[ $EUID -ne 0 ]]; then
     log "Example: sudo ./install.sh"
     exit 1
 fi
+
+read -r -p "Type 'yes' to continue: " CONFIRM
+if [[ "$CONFIRM" != "yes" ]]; then
+    log "Aborted."
+    exit 1
+fi
+
 
 CURRENT_USER=${SUDO_USER:-$(whoami)}
 log "Running commands as user: $CURRENT_USER"
@@ -173,6 +176,29 @@ else
 fi
 
 # -----------------------
+# STEP 4b: Deploy frontend to web root
+# -----------------------
+log ""
+log "=== Step 4b: Copying frontend build to /var/www/html ==="
+
+FRONTEND_BUILD_DIR="${REPO_PATH}/${FRONTEND_DIR}/dist"
+WEB_ROOT="/var/www/html"
+
+if [ -d "$FRONTEND_BUILD_DIR" ]; then
+    log "Cleaning existing files in $WEB_ROOT..."
+    rm -rf "${WEB_ROOT:?}/"*   # The :? prevents accidental deletion if variable is empty
+
+    log "Copying new frontend build to $WEB_ROOT..."
+    cp -r "$FRONTEND_BUILD_DIR"/* "$WEB_ROOT"/
+
+    chown -R www-data:www-data "$WEB_ROOT"
+    log "Frontend deployed to $WEB_ROOT successfully."
+else
+    log "Error: Frontend build directory '$FRONTEND_BUILD_DIR' not found."
+    exit 1
+fi
+
+# -----------------------
 # STEP 5: Config Nginx
 # -----------------------
 log ""
@@ -195,17 +221,23 @@ fi
 log "Backing up existing nginx config..."
 cp "$NGINX_DEST" "${NGINX_DEST}.bak"
 
-log "Copying nginx config..."
+log "Copying nginx config from repository..."
 cp "$NGINX_SRC" "$NGINX_DEST"
 
-log "Updating frontend path..."
-sed -i "s|root .*frontend/dist;|root ${REPO_PATH}/frontend/dist;|g" "$NGINX_DEST"
+# Ask if the user wants to update the frontend root
+read -r -p "Do you want to update nginx root to $WEB_ROOT? [yes/no]: " UPDATE_NGINX_ROOT
+if [[ "$UPDATE_NGINX_ROOT" == "yes" ]]; then
+    log "Updating nginx config to use $WEB_ROOT..."
+    sed -i "s|root .*;|root ${WEB_ROOT};|g" "$NGINX_DEST"
+fi
 
 log "Testing nginx configuration..."
 nginx -t
 
 log "Reloading nginx..."
 systemctl reload nginx
+
+log "Nginx configuration complete."
 
 # -----------------------
 # STEP 6: Optional ANT+ USB setup
