@@ -11,7 +11,7 @@ LOG_FILE="$(eval echo "~$SUDO_USER")/amwa_install.log"
 # HELPERS
 # -----------------------
 log() {
-    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    echo -e "$1" | tee -a "$LOG_FILE"
 }
 
 log_cmd() {
