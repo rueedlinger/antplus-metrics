@@ -156,7 +156,7 @@ log "=== Step 5: Building backend ==="
 run_as_user "
 cd $REPO_PATH
 source $SETUP_VENV_DIR/bin/activate
-uv sync --all-groups
+uv sync --all-groups --active
 "
 
 # -----------------------
@@ -318,9 +318,9 @@ if [[ "$INSTALL_SERVICE" == "yes" ]]; then
 
     cp "$SERVICE_SRC" "$SERVICE_FILE"
 
-    sed -i "s|User=.*|User=${CURRENT_USER}|" "$SERVICE_FILE"
-    sed -i "s|WorkingDirectory=.*|WorkingDirectory=${REPO_PATH}|" "$SERVICE_FILE"
-    sed -i "s|/home/pi/amwa|${REPO_PATH}|g" "$SERVICE_FILE"
+    # Replace placeholders in the systemd service file
+    sed -i "s|USER|${CURRENT_USER}|g" "$SERVICE_FILE"
+    sed -i "s|REPO_DIR|${REPO_PATH}|g" "$SERVICE_FILE"
 
     systemctl daemon-reload
     systemctl enable amwa
