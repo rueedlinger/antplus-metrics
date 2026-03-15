@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from typing import List
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -55,7 +55,15 @@ async def lifespan(app: FastAPI):
         await asyncio.to_thread(app.state.metrics.stop)
 
 
-app = FastAPI(title="ANT+ Metrics Service", lifespan=lifespan)
+app = FastAPI(
+    title="ANT+ Metrics Service",
+    openapi_url="/api/openapi.json",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    lifespan=lifespan,
+)
+api_router = APIRouter(prefix="/api")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,7 +74,7 @@ app.add_middleware(
 )
 
 
-@app.get("/status")
+@api_router.get("/status")
 def get_status():
     return {"up": "true"}
 
@@ -74,7 +82,7 @@ def get_status():
 # -------------------------
 # Metrics endpoints
 # -------------------------
-@app.post("/metrics/start")
+@api_router.post("/metrics/start")
 def start_metrics():
     try:
         metrics: Metrics = app.state.metrics
@@ -84,7 +92,7 @@ def start_metrics():
         raise HTTPException(status_code=500, detail=f"Failed start metrcics: {str(e)}")
 
 
-@app.post("/metrics/stop")
+@api_router.post("/metrics/stop")
 def stop_metrics():
     try:
         metrics: Metrics = app.state.metrics
@@ -94,7 +102,7 @@ def stop_metrics():
         raise HTTPException(status_code=500, detail=f"Failed to stop metrics: {str(e)}")
 
 
-@app.post("/metrics/settings")
+@api_router.post("/metrics/settings")
 def update_metrics_settings(payload: MetricsSettingsModel):
 
     metrics: Metrics = app.state.metrics
@@ -111,7 +119,7 @@ def update_metrics_settings(payload: MetricsSettingsModel):
         raise HTTPException(status_code=500, detail=f"Failed to update: {str(e)}")
 
 
-@app.get("/metrics/settings", response_model=MetricsSettingsModel)
+@api_router.get("/metrics/settings", response_model=MetricsSettingsModel)
 def get_metrics_settings():
     try:
         metrics: Metrics = app.state.metrics
@@ -121,7 +129,7 @@ def get_metrics_settings():
         raise HTTPException(status_code=500, detail=f"Failed to get settings: {str(e)}")
 
 
-@app.get("/metrics", response_model=MetricsModel)
+@api_router.get("/metrics", response_model=MetricsModel)
 def get_metrics():
     try:
         metrics: Metrics = app.state.metrics
@@ -131,7 +139,7 @@ def get_metrics():
         raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
 
 
-@app.get("/metrics/devices", response_model=list[DeviceModel])
+@api_router.get("/metrics/devices", response_model=list[DeviceModel])
 def get_metrics_devices():
     try:
         metrics: Metrics = app.state.metrics
@@ -166,7 +174,7 @@ async def metrics_event_generator():
             await asyncio.sleep(METRICS_DELAY_SECONDS)
 
 
-@app.get("/metrics/stream")
+@api_router.get("/metrics/stream")
 async def stream_metrics():
     return StreamingResponse(metrics_event_generator(), media_type="text/event-stream")
 
@@ -192,17 +200,17 @@ async def device_event_generator():
             await asyncio.sleep(DEVICES_DELAY_SECONDS)
 
 
-@app.get("/metrics/devices/stream")
+@api_router.get("/metrics/devices/stream")
 async def stream_devices():
     return StreamingResponse(device_event_generator(), media_type="text/event-stream")
 
 
-@app.get("/workout", response_model=list[IntervalModel])
+@api_router.get("/workout", response_model=list[IntervalModel])
 def get_workout():
     return app.state.workout
 
 
-@app.post("/workout", response_model=list[IntervalModel])
+@api_router.post("/workout", response_model=list[IntervalModel])
 def set_workout(intervals: list[IntervalModel]):
     timer: Timer = app.state.timer
 
@@ -215,7 +223,7 @@ def set_workout(intervals: list[IntervalModel]):
     return app.state.workout
 
 
-@app.post("/workout/start")
+@api_router.post("/workout/start")
 def start_workout():
     try:
         timer: Timer = app.state.timer
@@ -226,7 +234,7 @@ def start_workout():
         raise HTTPException(status_code=500, detail=f"Failed to start: {str(e)}")
 
 
-@app.post("/workout/stop")
+@api_router.post("/workout/stop")
 def stop_workout():
     try:
         timer: Timer = app.state.timer
@@ -259,9 +267,12 @@ async def workout_event_generator():
             await asyncio.sleep(WORKOUT_DELAY_SECONDS)
 
 
-@app.get("/workout/stream")
+@api_router.get("/workout/stream")
 async def stream_workout():
     """
     Stream live workout interval progress using SSE.
     """
     return StreamingResponse(workout_event_generator(), media_type="text/event-stream")
+
+
+app.include_router(api_router)
