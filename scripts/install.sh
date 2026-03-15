@@ -4,6 +4,9 @@ IFS=$'\n\t'
 
 LOG_FILE="${HOME}/amwa_install.log"
 
+# Truncate the log at the start of the script
+> "$LOG_FILE"
+
 log() {
     echo -e "$1" | tee -a "$LOG_FILE"
 }
