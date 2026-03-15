@@ -152,6 +152,13 @@ log "Git version: $(git --version)"
 log ""
 log "=== STEP 4: Setting up Python virtual environment ==="
 
+# If venv exists, remove it (safe: ensures clean state)
+if [ -d "$SETUP_VENV_DIR" ]; then
+    log "Removing existing virtual environment at $SETUP_VENV_DIR..."
+    rm -rf "$SETUP_VENV_DIR"
+fi
+
+
 run_in_repo "if [ ! -d \"$SETUP_VENV_DIR\" ]; then python3 -m venv \"$SETUP_VENV_DIR\"; fi; source \"$SETUP_VENV_DIR/bin/activate\"; pip install --upgrade pip; pip install uv"
 
 # -----------------------
