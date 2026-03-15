@@ -3,7 +3,7 @@ server {
     server_name _;
 
     # Serve static files
-    root /var/www/html;
+    root WWW_ROOT;
     index index.html;
 
     location / {

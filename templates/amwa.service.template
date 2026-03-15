@@ -1,0 +1,30 @@
+[Unit]
+Description=AMWA Backend (Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=USER
+WorkingDirectory=REPO_DIR
+
+# Ensure the virtualenv bin directory is first in PATH
+Environment="PATH=REPO_DIR/.venv/bin:/usr/bin"
+Environment="PYTHONUNBUFFERED=1"
+
+# Use the full path to uvicorn inside the virtualenv
+ExecStart=REPO_DIR/.venv/bin/uvicorn app.api:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --timeout-graceful-shutdown 1 \
+    --log-config REPO_DIR/logging.conf
+
+# Automatically restart if it crashes
+Restart=always
+RestartSec=3
+
+# Log to journal
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
