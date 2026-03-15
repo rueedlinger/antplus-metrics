@@ -11,8 +11,6 @@ log() {
     echo -e "$1" | tee -a "$LOG_FILE"
 }
 
-
-
 # -----------------------
 # DISCLAIMER
 # -----------------------
@@ -199,45 +197,64 @@ else
 fi
 
 # -----------------------
-# STEP 5: Config Nginx
+# STEP 5: Optional Nginx configuration
 # -----------------------
 log ""
-log "=== Step 5: Configuring nginx ==="
+log "=== Step 5: Optional Nginx configuration ==="
 
-# Check if nginx exists
-if ! command -v nginx >/dev/null 2>&1; then
-    log "Error: nginx is not installed. Please install nginx first."
-    exit 1
+read -r -p "Do you want to configure Nginx for the AMWA frontend? [yes/no]: " CONFIGURE_NGINX
+if [[ "$CONFIGURE_NGINX" != "yes" ]]; then
+    log "Skipping Nginx configuration."
+else
+
+    # Check if nginx exists
+    if ! command -v nginx >/dev/null 2>&1; then
+        log "Error: nginx is not installed. Please install nginx first."
+        exit 1
+    fi
+
+    NGINX_SRC="${REPO_PATH}/scripts/nginx.conf"
+    NGINX_DEST="/etc/nginx/sites-available/default"
+
+    # Ensure nginx config exists in repo
+    if [ ! -f "$NGINX_SRC" ]; then
+        log "Error: nginx config not found at $NGINX_SRC"
+        exit 1
+    fi
+
+    # Backup existing nginx config if not already backed up
+    if [ ! -f "${NGINX_DEST}.bak" ]; then
+        log "Backing up existing nginx config..."
+        cp "$NGINX_DEST" "${NGINX_DEST}.bak"
+    else
+        log "Backup already exists at ${NGINX_DEST}.bak"
+    fi
+
+    # Copy new config from repo
+    log "Copying nginx config from repository..."
+    cp "$NGINX_SRC" "$NGINX_DEST"
+
+    # Always set root to the frontend web root
+    log "Setting Nginx root to $WEB_ROOT in server block(s)..."
+    awk -v root="$WEB_ROOT" '
+        $1 == "server" {in_server=1}
+        in_server && $1 == "}" {in_server=0}
+        in_server && $1 == "root" {$2=root";"}
+        {print}
+    ' "$NGINX_DEST" > "${NGINX_DEST}.tmp" && mv "${NGINX_DEST}.tmp" "$NGINX_DEST"
+
+    # Test nginx config
+    log "Testing nginx configuration..."
+    if nginx -t 2>&1 | tee -a "$LOG_FILE"; then
+        log "Reloading nginx..."
+        systemctl reload nginx
+        log "Nginx configuration complete."
+    else
+        log "Error: nginx configuration test failed. Check ${NGINX_DEST}."
+        exit 1
+    fi
+
 fi
-
-NGINX_SRC="${REPO_PATH}/scripts/nginx.conf"
-NGINX_DEST="/etc/nginx/sites-available/default"
-
-if [ ! -f "$NGINX_SRC" ]; then
-    log "Error: nginx config not found at $NGINX_SRC"
-    exit 1
-fi
-
-log "Backing up existing nginx config..."
-cp "$NGINX_DEST" "${NGINX_DEST}.bak"
-
-log "Copying nginx config from repository..."
-cp "$NGINX_SRC" "$NGINX_DEST"
-
-# Ask if the user wants to update the frontend root
-read -r -p "Do you want to update nginx root to $WEB_ROOT? [yes/no]: " UPDATE_NGINX_ROOT
-if [[ "$UPDATE_NGINX_ROOT" == "yes" ]]; then
-    log "Updating nginx config to use $WEB_ROOT..."
-    sed -i "s|root .*;|root ${WEB_ROOT};|g" "$NGINX_DEST"
-fi
-
-log "Testing nginx configuration..."
-nginx -t
-
-log "Reloading nginx..."
-systemctl reload nginx
-
-log "Nginx configuration complete."
 
 # -----------------------
 # STEP 6: Optional ANT+ USB setup
